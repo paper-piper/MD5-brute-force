@@ -101,9 +101,13 @@ def get_hash_range(cores_number):
     :return: Tuple containing the start and end of the hash range.
     """
     global current_range
+    # if the whole range is covered, check form 0-0
+    if current_range > desired_range:
+        return 0, 0
     capacity = cores_number * cpu_power
     start_range = current_range
     end_range = start_range + capacity
+    end_range = desired_range if end_range > desired_range else end_range
 
     # update ranges
     current_range = end_range
@@ -116,11 +120,8 @@ def start_server():
 
     :return: None
     """
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        # Create a socket object
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        # Bind the socket to the address and port
         server_socket.bind((HOST, PORT))
 
         # Start listening for incoming connections
