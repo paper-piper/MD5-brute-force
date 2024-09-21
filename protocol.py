@@ -5,6 +5,7 @@ import socket
 
 # Server Messages
 SEND_DETAILS = "No problem, you need to find the following hash in the following range"  # <hash results>:<range>
+STOP_WORK = "The hash has been found! you can stop working"
 
 # Client Messages
 START_CONNECTION = "Hello, I want to work"  # number of cores

@@ -12,7 +12,7 @@ HASH_LENGTH = 3
 ORIGINAL_HASH = "-1"
 
 # Create an Event object to signal when the number is found
-found_event = threading.Event()
+stop_work = threading.Event()
 
 # Configure logging
 logging.basicConfig(filename='client.log', level=logging.INFO,
@@ -39,7 +39,11 @@ def start_client(client_socket):
         msg_type, msg_params = protocol.decode_protocol(raw_message)
 
         if msg_type == protocol.SEND_DETAILS:
+            # before starting to compute hash, set a thread which will listen for quit message
+            threading.Thread(target=wait_for_quit, args=(client_socket,)).start()
+
             results = handle_threads(cpu_cores_num, *msg_params)
+
             if results != "-1":  # Found the hash
                 message = protocol.encode_protocol(protocol.FOUND, ORIGINAL_HASH)
                 protocol.send_message(client_socket, message)
@@ -48,6 +52,7 @@ def start_client(client_socket):
                 message = protocol.encode_protocol(protocol.NOT_FOUND, results)
                 protocol.send_message(client_socket, message)
                 logging.info(f"Didn't find hash, searched from {msg_params[1]} to {msg_params[2]}")
+
     except ValueError as e:
         logging.error(f"Value error: {e}")
     except socket.error as e:
@@ -55,6 +60,21 @@ def start_client(client_socket):
     finally:
         # Close the connection
         client_socket.close()
+
+
+def wait_for_quit(client_socket):
+    """
+    check if the server shuts down hash work or if the hash had been found by the client
+    :param client_socket:
+    :return:
+    """
+    while not stop_work.is_set():
+        raw_data = protocol.receive_message(client_socket)
+        msg_type, params = protocol.decode_protocol(raw_data)
+        if msg_type == protocol.STOP_WORK:
+            logging.info("Got quit message from server, stopping work")
+            stop_work.set()
+            return
 
 
 def handle_threads(num_of_cores, desired_hash, range_start, range_end):
@@ -106,21 +126,23 @@ def compute_hash(desired_hash, range_start, range_end):
     """
     global ORIGINAL_HASH
     try:
-        while not found_event.is_set():  # Check if the event has been set by another thread
-            # Iterate over the range from start to end
-            for num in range(range_start, range_end + 1):
-                # Pad the number according to the hash length (e.g., 5 -> "00005" if length is 5)
-                padded_str = str(num).zfill(HASH_LENGTH)
+        # Iterate over the range from start to end
+        for num in range(range_start, range_end + 1):
+            # Check if the event has been set by another thread
+            if stop_work.is_set():
+                return
+            # Pad the number according to the hash length (e.g., 5 -> "00005" if length is 5)
+            padded_str = str(num).zfill(HASH_LENGTH)
 
-                # Compute the MD5 hash for the padded string
-                hash_obj = hashlib.md5(padded_str.encode())
-                hash_guess = hash_obj.hexdigest()
+            # Compute the MD5 hash for the padded string
+            hash_obj = hashlib.md5(padded_str.encode())
+            hash_guess = hash_obj.hexdigest()
 
-                # Check if the generated hash matches the desired hash
-                if hash_guess == desired_hash:
-                    found_event.set()  # Signal that the solution is found
-                    ORIGINAL_HASH = str(num)  # Return the number if hash matches
-                    logging.info(f"Desired hash found: {padded_str} -> {hash_guess}")
+            # Check if the generated hash matches the desired hash
+            if hash_guess == desired_hash:
+                stop_work.set()  # Signal that the solution is found
+                ORIGINAL_HASH = str(num)  # Return the number if hash matches
+                logging.info(f"Desired hash found: {padded_str} -> {hash_guess}")
 
             return
     except Exception as e:

@@ -2,6 +2,7 @@ import socket
 import threading
 import protocol
 import logging
+from datetime import datetime, timedelta
 
 # Global constants
 HOST = '127.0.0.1'  # Localhost
@@ -13,9 +14,13 @@ HASH_LENGTH = 3
 clients = []
 id_count = 1
 
-desired_range = 999
-current_range = 0
-cpu_power = 5
+# Hash variables
+MAX_HASH = 999
+shared_ranges = 0
+CPU_POWER = 5
+
+# Global configurations
+TIMEOUT = 5  # seconds
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
@@ -34,6 +39,7 @@ class Client:
         self.client_id = client_id
         self.cpu_cores = cpu_cores
         self.client_socket = client_socket
+        self.start_work_time = datetime.now()
 
 
 def handle_client(client_socket, client_address):
@@ -71,6 +77,12 @@ def handle_client(client_socket, client_address):
 
             if msg_type == protocol.FOUND:
                 logging.info(f"Found the hash! ({msg_params[0]})")
+                # let all other client's know the work is over
+                message = protocol.encode_protocol(protocol.STOP_WORK)
+                for other_client in clients:
+                    if other_client != client:
+                        protocol.send_message(other_client.client_socket, message)
+
             elif msg_type == protocol.NOT_FOUND:
                 logging.info(f"Client {client.client_id} didn't find the hash")
 
@@ -80,6 +92,10 @@ def handle_client(client_socket, client_address):
         logging.error(f"Socket error with client {client_address}: {e}")
     finally:
         client_socket.close()
+
+
+def check_for_timeout():
+    pass
 
 
 def send_details_message(client):
@@ -100,17 +116,17 @@ def get_hash_range(cores_number):
     :param cores_number: The number of CPU cores the client has.
     :return: Tuple containing the start and end of the hash range.
     """
-    global current_range
+    global shared_ranges
     # if the whole range is covered, check form 0-0
-    if current_range > desired_range:
+    if shared_ranges > MAX_HASH:
         return 0, 0
-    capacity = cores_number * cpu_power
-    start_range = current_range
+    capacity = cores_number * CPU_POWER
+    start_range = shared_ranges
     end_range = start_range + capacity
-    end_range = desired_range if end_range > desired_range else end_range
+    end_range = MAX_HASH if end_range > MAX_HASH else end_range
 
     # update ranges
-    current_range = end_range
+    shared_ranges = end_range
     return start_range, end_range
 
 
