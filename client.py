@@ -22,6 +22,10 @@ logging.basicConfig(filename='client.log', level=logging.INFO,
 class Client:
 
     def __init__(self, client_socket, cpu_cores_num):
+        """
+        :param client_socket: the client's socket
+        :param cpu_cores_num: the number of cores the client has
+        """
         self.client_socket = client_socket
         self.cpu_cores_num = cpu_cores_num
 
@@ -48,11 +52,10 @@ class Client:
                 if results != "-1":  # Found the hash
                     message = protocol.encode_protocol(protocol.FOUND, ORIGINAL_HASH)
                     protocol.send_message(self.client_socket, message)
-                    logging.info(f"Found hash! {results}")
                 else:  # Didn't find hash
                     message = protocol.encode_protocol(protocol.NOT_FOUND, results)
                     protocol.send_message(self.client_socket, message)
-                    logging.info(f"Didn't find hash, searched from {msg_params[1]} to {msg_params[2]}")
+                    logging.info(f"Didn't find hash")
 
         except ValueError as e:
             logging.error(f"Value error: {e}")
@@ -82,7 +85,6 @@ class Client:
     def handle_threads(self, desired_hash, range_start, range_end):
         """
         Handles the creation and management of threads for hash computation.
-
         :param desired_hash: The target hash to be matched.
         :param range_start: The start of the number range to search.
         :param range_end: The end of the number range to search.
@@ -94,6 +96,7 @@ class Client:
             capacity = range_end - range_start
             capacity_per_thread = capacity // self.cpu_cores_num
             threads = []
+            logging.info(f"Starting search in range {range_start}-{range_end}...")
 
             for i in range(self.cpu_cores_num):
                 thread_start_range = range_start + i * capacity_per_thread
@@ -133,6 +136,8 @@ class Client:
                 # Check if the event has been set by another thread
                 if stop_work.is_set():
                     return
+                if num == 1:
+                    pass
                 # Pad the number according to the hash length (e.g., 5 -> "00005" if length is 5)
                 padded_str = str(num).zfill(HASH_LENGTH)
 

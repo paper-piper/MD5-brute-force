@@ -9,7 +9,7 @@ PORT = 12345  # Port to listen on
 
 HASH_RESULTS = "b7a782741f667201b54880c925faec4b"
 HASH_LENGTH = 5
-CPU_POWER = 1000
+CPU_POWER = 500
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,8 +18,6 @@ logging.basicConfig(filename='server.log', level=logging.INFO,
 class Client:
     def __init__(self, client_id, cpu_cores, client_socket):
         """
-        Initializes a new client instance.
-
         :param client_id: ID of the client.
         :param cpu_cores: Number of CPU cores the client has.
         :param client_socket: The socket object associated with the client.
@@ -32,6 +30,10 @@ class Client:
 class Server:
 
     def __init__(self, server_socket, cpu_power):
+        """
+        :param server_socket: the main server socket
+        :param cpu_power: the amount of range a client will have assigned per cpu
+        """
         self.server_socket = server_socket
         # Hash variables
         self.max_hash = (10 ** HASH_LENGTH) - 1
@@ -45,7 +47,6 @@ class Server:
     def handle_client(self, client_socket, client_address):
         """
         Handles a new client connection, receives messages, and processes their hash request.
-
         :param client_socket: The socket object for the client connection.
         :param client_address: The address of the connected client.
         :return: None
@@ -76,7 +77,7 @@ class Server:
                 msg_type, msg_params = protocol.decode_protocol(raw_message)
 
                 if msg_type == protocol.FOUND:
-                    logging.info(f"Found the hash! ({msg_params[0]})")
+                    logging.info(f"client with id {client.client_id} Found the hash! ({msg_params[0]})")
                     # let all other client's know the work is over
                     message = protocol.encode_protocol(protocol.STOP_WORK)
                     for other_client in self.clients:
@@ -106,7 +107,6 @@ class Server:
     def get_hash_range(self, cores_number):
         """
         Calculates the hash range that a client should process based on its CPU cores.
-
         :param cores_number: The number of CPU cores the client has.
         :return: Tuple containing the start and end of the hash range.
         """
@@ -126,7 +126,6 @@ class Server:
     def start_server(self):
         """
         Starts the server, listens for incoming connections, and handles clients in separate threads.
-
         :return: None
         """
         try:
@@ -151,8 +150,12 @@ class Server:
             self.server_socket.close()
 
 
-if __name__ == "__main__":
-    socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    socket.bind((HOST, PORT))
-    server = Server(socket, CPU_POWER)
+def main():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST, PORT))
+    server = Server(server_socket, CPU_POWER)
     server.start_server()
+
+
+if __name__ == "__main__":
+    main()
