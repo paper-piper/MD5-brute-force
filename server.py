@@ -7,9 +7,9 @@ import logging
 HOST = '127.0.0.1'  # Localhost
 PORT = 12345  # Port to listen on
 
-HASH_RESULTS = "04fc711301f3c784d66955d98d399afb"
-HASH_LENGTH = 6
-CPU_POWER = 500
+HASH_RESULTS = "b7a782741f667201b54880c925faec4b"
+HASH_LENGTH = 5
+CPU_POWER = 1000
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')

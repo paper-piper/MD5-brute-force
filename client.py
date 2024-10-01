@@ -139,14 +139,13 @@ class Client:
                 # Compute the MD5 hash for the padded string
                 hash_obj = hashlib.md5(padded_str.encode())
                 hash_guess = hash_obj.hexdigest()
-
                 # Check if the generated hash matches the desired hash
                 if hash_guess == desired_hash:
                     stop_work.set()  # Signal that the solution is found
                     ORIGINAL_HASH = str(num)  # Return the number if hash matches
                     logging.info(f"Desired hash found: {padded_str} -> {hash_guess}")
 
-                return
+            return
         except Exception as e:
             logging.error(f"Error during hash computation: {e}")
 
